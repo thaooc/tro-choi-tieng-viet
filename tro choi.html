@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò Chơi Ghép Chữ Tiếng Việt</title>
+    <!-- Tailwind CSS CDN for easy styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the game elements */
+        body {
+            font-family: 'Inter', sans-serif; /* Using Inter font as per instructions */
+            background-color: #f0f4f8; /* Light background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Rounded corners */
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            max-width: 90%; /* Responsive width */
+            width: 600px; /* Max width for desktop */
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .word-display {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            min-height: 60px; /* Ensure space for dropped letters */
+        }
+        .letter-slot {
+            width: 60px;
+            height: 60px;
+            border: 2px dashed #cbd5e1; /* Dashed border for empty slots */
+            border-radius: 0.75rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #475569;
+            background-color: #f8fafc;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .letter-slot.drag-over {
+            background-color: #e0f2fe; /* Highlight on drag over */
+            border-color: #38b2ac;
+        }
+        .letter-slot.correct {
+            background-color: #d1fae5; /* Green for correct placement */
+            border-color: #10b981;
+        }
+        .letter-slot.incorrect {
+            background-color: #fee2e2; /* Red for incorrect placement */
+            border-color: #ef4444;
+        }
+        .letter-tile {
+            width: 60px;
+            height: 60px;
+            background-color: #60a5fa; /* Blue background for draggable letters */
+            color: white;
+            border-radius: 0.75rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: grab; /* Indicate draggable */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .letter-tile:active {
+            cursor: grabbing;
+            transform: scale(1.05); /* Slightly enlarge on active */
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .letter-bank {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #f0f9ff; /* Lighter blue background for letter bank */
+            border-radius: 1rem;
+            border: 1px solid #bfdbfe;
+            width: 100%;
+        }
+        .feedback-message {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            min-height: 30px; /* Reserve space */
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            text-align: center;
+            display: none; /* Hidden by default */
+        }
+        .message-box button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 1rem;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .message-box button:hover {
+            background-color: #2563eb;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none; /* Hidden by default */
+        }
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .game-container {
+                padding: 1.5rem;
+            }
+            .letter-slot, .letter-tile {
+                width: 50px;
+                height: 50px;
+                font-size: 1.75rem;
+            }
+            .word-display, .letter-bank {
+                gap: 0.4rem;
+            }
+            .feedback-message {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-4">Ghép Chữ Thành Từ</h1>
+        <p class="text-lg text-gray-600 mb-6">Kéo các chữ cái vào ô trống để tạo thành từ đúng với hình ảnh.</p>
+
+        <!-- Image display for the word -->
+        <div class="mb-4">
+            <img id="word-image" src="" alt="Hình ảnh gợi ý" class="w-48 h-48 object-contain rounded-lg shadow-md border border-gray-200">
+        </div>
+
+        <!-- Slots for letters to be dropped -->
+        <div id="word-display" class="word-display">
+            <!-- Letter slots will be dynamically added here -->
+        </div>
+
+        <!-- Bank of draggable letters -->
+        <div id="letter-bank" class="letter-bank">
+            <!-- Draggable letter tiles will be dynamically added here -->
+        </div>
+
+        <!-- Feedback message area -->
+        <div id="feedback-message" class="feedback-message text-blue-600"></div>
+
+        <!-- Navigation buttons -->
+        <div class="flex gap-4 mt-6">
+            <button id="check-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Kiểm Tra
+            </button>
+            <button id="next-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Tiếp Theo
+            </button>
+        </div>
+    </div>
+
+    <!-- Message Box for alerts/confirmations -->
+    <div id="message-box" class="message-box">
+        <p id="message-content" class="text-lg text-gray-700"></p>
+        <button id="message-box-button">Đóng</button>
+    </div>
+    <div id="overlay" class="overlay"></div>
+
+    <script>
+        // Array of words, their images, and the correct order of letters.
+        // Focus on words with 'op', 'ơp', 'ôp' and basic alphabet words.
+        const words = [
+            { word: "HỘP", image: "https://placehold.co/192x192/ADD8E6/000000?text=HỘP", letters: ["H", "Ộ", "P"] },
+            { word: "TỐP", image: "https://placehold.co/192x192/F08080/000000?text=TỐP", letters: ["T", "Ố", "P"] },
+            { word: "LỢP", image: "https://placehold.co/192x192/90EE90/000000?text=LỢP", letters: ["L", "Ợ", "P"] },
+            { word: "CỐP", image: "https://placehold.co/192x192/FFD700/000000?text=CỐP", letters: ["C", "Ố", "P"] },
+            { word: "GỘP", image: "https://placehold.co/192x192/DDA0DD/000000?text=GỘP", letters: ["G", "Ộ", "P"] },
+            { word: "BÀ", image: "https://placehold.co/192x192/FFB6C1/000000?text=BÀ", letters: ["B", "À"] },
+            { word: "CÁ", image: "https://placehold.co/192x192/87CEEB/000000?text=CÁ", letters: ["C", "Á"] },
+            { word: "NHÀ", image: "https://placehold.co/192x192/FFDEAD/000000?text=NHÀ", letters: ["N", "H", "À"] },
+            { word: "MẸ", image: "https://placehold.co/192x192/F0E68C/000000?text=MẸ", letters: ["M", "Ẹ"] },
+            { word: "BÉ", image: "https://placehold.co/192x192/D8BFD8/000000?text=BÉ", letters: ["B", "É"] }
+        ];
+
+        let currentWordIndex = 0;
+        let droppedLetters = []; // To store letters dropped into slots in order
+
+        // Get DOM elements
+        const wordImage = document.getElementById('word-image');
+        const wordDisplay = document.getElementById('word-display');
+        const letterBank = document.getElementById('letter-bank');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const checkButton = document.getElementById('check-button');
+        const nextButton = document.getElementById('next-button');
+        const messageBox = document.getElementById('message-box');
+        const messageContent = document.getElementById('message-content');
+        const messageBoxButton = document.getElementById('message-box-button');
+        const overlay = document.getElementById('overlay');
+
+        /**
+         * Shuffles an array in place (Fisher-Yates algorithm).
+         * @param {Array} array The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+        }
+
+        /**
+         * Initializes the game for the current word.
+         */
+        function initializeGame() {
+            const currentWord = words[currentWordIndex];
+            wordImage.src = currentWord.image;
+            wordImage.alt = `Hình ảnh gợi ý cho từ "${currentWord.word}"`;
+            feedbackMessage.textContent = ''; // Clear previous feedback
+
+            // Clear previous slots and letters
+            wordDisplay.innerHTML = '';
+            letterBank.innerHTML = '';
+            droppedLetters = Array(currentWord.letters.length).fill(null); // Reset dropped letters array
+
+            // Create letter slots
+            currentWord.letters.forEach((letter, index) => {
+                const slot = document.createElement('div');
+                slot.classList.add('letter-slot');
+                slot.dataset.index = index; // Store original index for validation
+                slot.addEventListener('dragover', allowDrop);
+                slot.addEventListener('drop', drop);
+                slot.addEventListener('dragleave', dragLeave);
+                wordDisplay.appendChild(slot);
+            });
+
+            // Create draggable letter tiles
+            const shuffledLetters = [...currentWord.letters]; // Create a copy to shuffle
+            shuffleArray(shuffledLetters);
+
+            shuffledLetters.forEach(letter => {
+                const tile = document.createElement('div');
+                tile.classList.add('letter-tile');
+                tile.textContent = letter;
+                tile.draggable = true;
+                tile.dataset.letter = letter; // Store the letter value
+                tile.addEventListener('dragstart', drag);
+                letterBank.appendChild(tile);
+            });
+
+            // Disable check/next buttons until interaction
+            checkButton.disabled = false;
+            nextButton.disabled = true;
+            nextButton.classList.add('opacity-50', 'cursor-not-allowed');
+            checkButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        /**
+         * Handles drag start event.
+         * @param {Event} event The drag event.
+         */
+        function drag(event) {
+            event.dataTransfer.setData('text/plain', event.target.dataset.letter);
+            event.dataTransfer.effectAllowed = 'move';
+            // Store a reference to the dragged tile so we can remove it from its original spot
+            event.target.classList.add('opacity-50'); // Visual feedback for dragging
+        }
+
+        /**
+         * Handles drag over event for drop zones.
+         * @param {Event} event The drag event.
+         */
+        function allowDrop(event) {
+            event.preventDefault(); // Necessary to allow dropping
+            if (event.target.classList.contains('letter-slot')) {
+                event.target.classList.add('drag-over');
+            }
+        }
+
+        /**
+         * Handles drag leave event for drop zones.
+         * @param {Event} event The drag event.
+         */
+        function dragLeave(event) {
+            if (event.target.classList.contains('letter-slot')) {
+                event.target.classList.remove('drag-over');
+            }
+        }
+
+        /**
+         * Handles drop event.
+         * @param {Event} event The drop event.
+         */
+        function drop(event) {
+            event.preventDefault();
+            const data = event.dataTransfer.getData('text/plain');
+            const droppedLetter = data;
+            const targetSlot = event.target.closest('.letter-slot'); // Ensure we get the slot even if dropping on its child text
+
+            if (targetSlot && !targetSlot.textContent) { // Only allow dropping if slot is empty
+                const draggedTile = document.querySelector(`.letter-tile[data-letter="${droppedLetter}"]:not(.hidden)`); // Find the original tile
+                if (draggedTile) {
+                    draggedTile.classList.add('hidden'); // Hide the original tile from the bank
+                }
+
+                targetSlot.textContent = droppedLetter;
+                targetSlot.classList.remove('drag-over');
+                targetSlot.classList.add('bg-blue-200'); // Indicate it's filled
+                droppedLetters[targetSlot.dataset.index] = droppedLetter; // Store the letter in the correct index
+            } else if (targetSlot && targetSlot.textContent) {
+                // If slot is already filled, show a message
+                showMessage("Ô này đã có chữ rồi. Vui lòng kéo chữ khác vào ô trống nhé!");
+                targetSlot.classList.remove('drag-over');
+            }
+        }
+
+        /**
+         * Checks the user's answer.
+         */
+        function checkAnswer() {
+            const currentWord = words[currentWordIndex];
+            const correctWord = currentWord.letters.join('');
+            const userAttempt = droppedLetters.filter(letter => letter !== null).join(''); // Join only non-null letters
+
+            // Check if all slots are filled
+            if (droppedLetters.includes(null)) {
+                feedbackMessage.textContent = 'Bạn cần điền đủ các chữ cái vào ô trống!';
+                feedbackMessage.classList.remove('text-green-600', 'text-red-600');
+                feedbackMessage.classList.add('text-blue-600');
+                return;
+            }
+
+            // Compare the user's word with the correct word
+            if (userAttempt === correctWord) {
+                feedbackMessage.textContent = 'Chính xác! Bạn thật giỏi!';
+                feedbackMessage.classList.remove('text-blue-600', 'text-red-600');
+                feedbackMessage.classList.add('text-green-600');
+
+                // Apply correct styling to slots
+                wordDisplay.querySelectorAll('.letter-slot').forEach((slot, index) => {
+                    slot.classList.remove('bg-blue-200', 'incorrect');
+                    slot.classList.add('correct');
+                });
+
+                nextButton.disabled = false; // Enable next button
+                nextButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                checkButton.disabled = true; // Disable check button after correct answer
+                checkButton.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                feedbackMessage.textContent = 'Chưa đúng rồi. Hãy thử lại nhé!';
+                feedbackMessage.classList.remove('text-blue-600', 'text-green-600');
+                feedbackMessage.classList.add('text-red-600');
+
+                // Apply incorrect styling to slots
+                wordDisplay.querySelectorAll('.letter-slot').forEach((slot, index) => {
+                    slot.classList.remove('bg-blue-200', 'correct');
+                    slot.classList.add('incorrect');
+                });
+                // Allow user to try again, so don't disable check button
+            }
+        }
+
+        /**
+         * Moves to the next word or finishes the game.
+         */
+        function nextWord() {
+            currentWordIndex++;
+            if (currentWordIndex < words.length) {
+                initializeGame();
+            } else {
+                showMessage('Chúc mừng! Bạn đã hoàn thành tất cả các từ. Bạn thật tuyệt vời!');
+                currentWordIndex = 0; // Reset for replay
+                // Optionally, you could hide the game and show a "Play Again" button
+            }
+        }
+
+        /**
+         * Displays a custom message box.
+         * @param {string} message The message to display.
+         */
+        function showMessage(message) {
+            messageContent.textContent = message;
+            messageBox.style.display = 'block';
+            overlay.style.display = 'block';
+        }
+
+        /**
+         * Hides the custom message box.
+         */
+        function hideMessage() {
+            messageBox.style.display = 'none';
+            overlay.style.display = 'none';
+        }
+
+        // Event Listeners
+        checkButton.addEventListener('click', checkAnswer);
+        nextButton.addEventListener('click', nextWord);
+        messageBoxButton.addEventListener('click', hideMessage);
+
+        // Initialize the first word when the page loads
+        window.onload = initializeGame;
+
+    </script>
+</body>
+</html>
